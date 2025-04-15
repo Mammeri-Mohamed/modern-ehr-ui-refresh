@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { User, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { User, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 import { 
   Table, 
   TableBody, 
@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import axios from 'axios';
 
 // Type pour les demandes d'acteurs de santé
 interface HealthActorRequest {
@@ -27,7 +29,16 @@ interface HealthActorRequest {
   etat_request: 'PENDING' | 'ACCEPTED' | 'REJECTED';
 }
 
+// Configuration de l'API backend
+const API_CONFIG = {
+  BASE_URL: 'http://192.168.56.101:4000', // URL du serveur backend
+  CHANNEL: 'mychannel',
+  CHAINCODE_HEALTH_ACTOR: 'healthactor',
+  CHAINCODE_HEALTH_AUTHORITY: 'healthactor'
+};
+
 const Second = () => {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [requests, setRequests] = useState<HealthActorRequest[]>([
     // Données de démonstration, à remplacer par des données réelles
@@ -64,29 +75,179 @@ const Second = () => {
   ]);
   const [error, setError] = useState<string | null>(null);
 
-  // Fonction pour accepter une demande
-  const handleAccept = (requestId: string) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir accepter la demande ${requestId} ?`)) {
-      // Implémenter la logique d'acceptation ici
-      console.log(`Demande ${requestId} acceptée`);
+  // Fonction pour obtenir le token d'authentification de l'admin
+  const getAdminToken = async () => {
+    try {
+      console.log("🔹 Connexion de l'admin en cours...");
+      const authLoginResponse = await axios.post(`${API_CONFIG.BASE_URL}/users/login`, {
+        username: "admin",
+        orgName: "Org1"
+      });
+
+      if (!authLoginResponse.data.success || !authLoginResponse.data.message?.token) {
+        console.error("❌ Échec de la connexion:", authLoginResponse.data);
+        throw new Error("Échec de la connexion à l'admin");
+      }
+
+      console.log("✅ Connexion réussie, token JWT récupéré");
+      return authLoginResponse.data.message.token;
+    } catch (error: any) {
+      console.error("❌ Erreur lors de la connexion de l'admin:", error.response?.data || error.message);
+      setError("Erreur d'authentification: Impossible de se connecter au serveur.");
+      return null;
+    }
+  };
+
+  // Fonction pour récupérer les requêtes depuis la blockchain
+  const getRequests = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const authToken = await getAdminToken();
+      if (!authToken) {
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("🔹 Récupération des demandes d'acteurs de santé...");
       
-      // Mise à jour locale pour la démonstration
-      setRequests(requests.map(req => 
-        req.request_id === requestId ? {...req, etat_request: 'ACCEPTED'} : req
-      ));
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_ACTOR}`, 
+        {
+          params: {
+            fcn: "GetAllHealthActorRequests",
+            args: '[]',
+          },
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      console.log("✅ Réponse reçue:", response.data);
+      
+      // Traitement de la réponse
+      if (response.data && response.data.result && response.data.result.data) {
+        setRequests(response.data.result.data);
+      } else {
+        console.error("❌ Format de réponse invalide:", response.data);
+        setError("Format de réponse invalide ou aucune donnée disponible.");
+      }
+    } catch (error: any) {
+      console.error("❌ Erreur lors de la récupération des requêtes:", error.response?.data || error.message);
+      setError("Erreur: Impossible de récupérer les demandes.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction pour accepter une demande
+  const handleAccept = async (requestId: string) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir accepter la demande ${requestId} ?`)) {
+      try {
+        const authToken = await getAdminToken();
+        if (!authToken) return;
+
+        // Mise à jour du statut à "ACCEPTED"
+        await axios.post(
+          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
+          {
+            fcn: "UpdateRequestStatus",
+            args: [requestId, "ACCEPTED"],
+            peers: ["peer0.org1.example.com"]
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${authToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        // Ajout de l'acteur de santé
+        await axios.post(
+          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_ACTOR}`,
+          {
+            fcn: "AddHealthActor",
+            args: [requestId],
+            peers: ["peer0.org1.example.com"]
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${authToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        toast({
+          title: "Demande acceptée",
+          description: `La demande ${requestId} a été acceptée avec succès et l'acteur de santé a été ajouté.`,
+          variant: "default",
+        });
+        
+        // Mise à jour locale pour la démonstration
+        setRequests(requests.map(req => 
+          req.request_id === requestId ? {...req, etat_request: 'ACCEPTED'} : req
+        ));
+        
+        // getRequests(); // Décommenter pour rafraîchir depuis le serveur
+      } catch (error: any) {
+        console.error("❌ Erreur lors de l'acceptation de la requête:", error.response?.data || error.message);
+        toast({
+          title: "Erreur",
+          description: `Erreur lors de l'acceptation de la demande: ${error.response?.data?.message || error.message}`,
+          variant: "destructive",
+        });
+      }
     }
   };
 
   // Fonction pour refuser une demande
-  const handleReject = (requestId: string) => {
+  const handleReject = async (requestId: string) => {
     if (window.confirm(`Êtes-vous sûr de vouloir refuser la demande ${requestId} ?`)) {
-      // Implémenter la logique de refus ici
-      console.log(`Demande ${requestId} refusée`);
-      
-      // Mise à jour locale pour la démonstration
-      setRequests(requests.map(req => 
-        req.request_id === requestId ? {...req, etat_request: 'REJECTED'} : req
-      ));
+      try {
+        const authToken = await getAdminToken();
+        if (!authToken) return;
+
+        // Mise à jour du statut à "REJECTED"
+        await axios.post(
+          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_ACTOR}`,
+          {
+            fcn: "UpdateRequestStatus",
+            args: [requestId, "REJECTED"],
+            peers: ["peer0.org1.example.com"]
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${authToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        toast({
+          title: "Demande refusée",
+          description: `La demande ${requestId} a été refusée.`,
+          variant: "default",
+        });
+        
+        // Mise à jour locale pour la démonstration
+        setRequests(requests.map(req => 
+          req.request_id === requestId ? {...req, etat_request: 'REJECTED'} : req
+        ));
+        
+        // getRequests(); // Décommenter pour rafraîchir depuis le serveur
+      } catch (error: any) {
+        console.error("❌ Erreur lors du refus de la requête:", error.response?.data || error.message);
+        toast({
+          title: "Erreur",
+          description: `Erreur lors du refus de la demande: ${error.response?.data?.message || error.message}`,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -101,6 +262,20 @@ const Second = () => {
         return <Badge variant="outline" className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300"><Clock className="w-3 h-3 mr-1" /> En attente</Badge>;
     }
   };
+
+  // Effet pour charger les demandes au chargement de la page
+  useEffect(() => {
+    // Décommenter pour activer la connexion au backend réel
+    // getRequests();
+    
+    // Simulation du chargement pour la démonstration
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -128,8 +303,8 @@ const Second = () => {
           <div className="card-hover rounded-lg border bg-card text-card-foreground shadow-sm p-6 transition-all">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-semibold leading-none tracking-tight">Demandes d'Acteurs de Santé</h3>
-              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
-                Actualiser
+              <Button onClick={() => getRequests()} variant="outline" size="sm">
+                <RefreshCw className="mr-2 h-4 w-4" /> Actualiser
               </Button>
             </div>
             
