@@ -22,7 +22,6 @@ import {
   NavigationMenu, 
   NavigationMenuContent, 
   NavigationMenuItem, 
-  NavigationMenuLink, 
   NavigationMenuList, 
   NavigationMenuTrigger, 
   navigationMenuTriggerStyle 
@@ -121,17 +120,13 @@ const Navbar = () => {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link to="/" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    Documentation
-                  </NavigationMenuLink>
+                <Link to="/" className={navigationMenuTriggerStyle()}>
+                  Documentation
                 </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link to="/" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    Support
-                  </NavigationMenuLink>
+                <Link to="/" className={navigationMenuTriggerStyle()}>
+                  Support
                 </Link>
               </NavigationMenuItem>
             </NavigationMenuList>
