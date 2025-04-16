@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -17,15 +16,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 
-// Type pour les demandes de patients
+// Type pour les demandes de patients basé sur la structure de réponse réelle
 interface PatientRequest {
-  RequestID: string;
-  Name: string;
-  prenom: string;
-  Matricule: string;
-  EHRID: string;
-  NumeroOrganisation: string;
-  EtatRequest: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  request_id: string;
+  patient_id: string;
+  name: string;
+  matricule: string;
+  ehr_id: string;
+  numero_organisation: string;
+  etat_request: 'PENDING' | 'ACCEPTED' | 'REJECTED';
 }
 
 // Configuration de l'API backend
@@ -42,32 +41,14 @@ const Third = () => {
   const [requests, setRequests] = useState<PatientRequest[]>([
     // Données de démonstration, à remplacer par des données réelles
     {
-      RequestID: "REQ001",
-      Name: "Dubois",
-      prenom: "Marie",
-      Matricule: "MD12345",
-      EHRID: "E1",
-      NumeroOrganisation: "ORG789",
-      EtatRequest: "PENDING"
+      request_id: "REQ001",
+      patient_id: "PAT001",
+      name: "Dubois Marie",
+      matricule: "MD12345",
+      ehr_id: "E1",
+      numero_organisation: "ORG789",
+      etat_request: "PENDING"
     },
-    {
-      RequestID: "REQ002",
-      Name: "Martin",
-      prenom: "Pierre",
-      Matricule: "PM67890",
-      EHRID: "E2",
-      NumeroOrganisation: "ORG456",
-      EtatRequest: "ACCEPTED"
-    },
-    {
-      RequestID: "REQ003",
-      Name: "Leclerc",
-      prenom: "Sophie",
-      Matricule: "SL54321",
-      EHRID: "E3",
-      NumeroOrganisation: "ORG123",
-      EtatRequest: "REJECTED"
-    }
   ]);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,8 +105,9 @@ const Third = () => {
 
       console.log("✅ Réponse reçue:", response.data);
       
-      // Traitement de la réponse
+      // Traitement correct de la réponse basé sur la structure observée
       if (response.data && response.data.result && response.data.result.data) {
+        // Mise à jour du state avec les données récupérées
         setRequests(response.data.result.data);
       } else {
         console.error("❌ Format de réponse invalide:", response.data);
@@ -186,7 +168,7 @@ const Third = () => {
         
         // Mise à jour locale pour la démonstration
         setRequests(requests.map(req => 
-          req.RequestID === requestId ? {...req, EtatRequest: 'ACCEPTED'} : req
+          req.request_id === requestId ? {...req, etat_request: 'ACCEPTED'} : req
         ));
         
         // getRequests(); // Décommenter pour rafraîchir depuis le serveur
@@ -232,7 +214,7 @@ const Third = () => {
         
         // Mise à jour locale pour la démonstration
         setRequests(requests.map(req => 
-          req.RequestID === requestId ? {...req, EtatRequest: 'REJECTED'} : req
+          req.request_id === requestId ? {...req, etat_request: 'REJECTED'} : req
         ));
         
         // getRequests(); // Décommenter pour rafraîchir depuis le serveur
@@ -261,16 +243,16 @@ const Third = () => {
 
   // Effet pour charger les demandes au chargement de la page
   useEffect(() => {
-    // Décommenter pour activer la connexion au backend réel
-    // getRequests();
+    // Activer la connexion au backend réel
+    getRequests();
     
     // Simulation du chargement pour la démonstration
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    // setIsLoading(true);
+    // const timer = setTimeout(() => {
+    //   setIsLoading(false);
+    // }, 1000);
     
-    return () => clearTimeout(timer);
+    // return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -318,7 +300,6 @@ const Third = () => {
                     <TableRow>
                       <TableHead>ID</TableHead>
                       <TableHead>Nom</TableHead>
-                      <TableHead>Prénom</TableHead>
                       <TableHead>Matricule</TableHead>
                       <TableHead>EHR ID</TableHead>
                       <TableHead>N° Org</TableHead>
@@ -328,22 +309,21 @@ const Third = () => {
                   </TableHeader>
                   <TableBody>
                     {requests.map((request) => (
-                      <TableRow key={request.RequestID} className="fade-in">
-                        <TableCell className="font-medium">{request.RequestID}</TableCell>
-                        <TableCell>{request.Name}</TableCell>
-                        <TableCell>{request.prenom}</TableCell>
-                        <TableCell>{request.Matricule}</TableCell>
-                        <TableCell>{request.EHRID}</TableCell>
-                        <TableCell>{request.NumeroOrganisation}</TableCell>
-                        <TableCell>{getStatusBadge(request.EtatRequest)}</TableCell>
+                      <TableRow key={request.request_id} className="fade-in">
+                        <TableCell className="font-medium">{request.request_id}</TableCell>
+                        <TableCell>{request.name}</TableCell>
+                        <TableCell>{request.matricule}</TableCell>
+                        <TableCell>{request.ehr_id}</TableCell>
+                        <TableCell>{request.numero_organisation}</TableCell>
+                        <TableCell>{getStatusBadge(request.etat_request)}</TableCell>
                         <TableCell>
-                          {request.EtatRequest === 'PENDING' && (
+                          {request.etat_request === 'PENDING' && (
                             <div className="flex space-x-2">
                               <Button 
                                 size="sm" 
                                 variant="outline" 
                                 className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                                onClick={() => handleAccept(request.RequestID)}
+                                onClick={() => handleAccept(request.request_id)}
                               >
                                 Accepter
                               </Button>
@@ -351,16 +331,16 @@ const Third = () => {
                                 size="sm" 
                                 variant="outline"
                                 className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                onClick={() => handleReject(request.RequestID)}
+                                onClick={() => handleReject(request.request_id)}
                               >
                                 Refuser
                               </Button>
                             </div>
                           )}
-                          {request.EtatRequest === 'ACCEPTED' && (
+                          {request.etat_request === 'ACCEPTED' && (
                             <span className="text-green-600 text-sm font-medium">Demande acceptée</span>
                           )}
-                          {request.EtatRequest === 'REJECTED' && (
+                          {request.etat_request === 'REJECTED' && (
                             <span className="text-red-600 text-sm font-medium">Demande refusée</span>
                           )}
                         </TableCell>
