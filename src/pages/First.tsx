@@ -13,7 +13,7 @@ import axios from 'axios';
 const API_CONFIG = {
   BASE_URL: 'http://192.168.56.101:4000',
   CHANNEL: 'mychannel',
-  CHAINCODE_HEALTH_AUTHORITY: 'healthactor',
+  CHAINCODE_HEALTH_AUTHORITY: 'healthauthority',
   CHAINCODE_HEALTH_PATIENT: 'patient'
 };
 
@@ -96,6 +96,8 @@ const First = () => {
         orgName: "Org1"
       });
 
+      console.log("Réponse complète après login:", authLoginResponse.data);
+
       if (!authLoginResponse.data.success || !authLoginResponse.data.message?.token) {
         console.error("❌ Échec de la connexion:", authLoginResponse.data);
         throw new Error("Échec de la connexion à l'admin");
@@ -103,7 +105,7 @@ const First = () => {
 
       console.log("✅ Connexion réussie, token JWT récupéré");
       return authLoginResponse.data.message.token;
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Erreur lors de la connexion de l'admin:", error.response?.data || error.message);
       toast({
         title: "Erreur d'authentification",
@@ -132,6 +134,29 @@ const First = () => {
         return;
       }
 
+      console.log("🔹 Étape 2: Ajout de l'administrateur dans la blockchain...");
+      
+      const requestBody = {
+        fcn: "AddAdmin",
+        args: [adminName, adminName, orgName],
+        peers: ["peer0.org1.example.com"]
+      };
+
+      console.log("📌 Requête envoyée à l'API:", JSON.stringify(requestBody, null, 2));
+
+      const invokeResponse = await axios.post(
+        `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
+        requestBody,
+        {
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      console.log("Résultat de l'invocation :", invokeResponse.data);
+      
       toast({
         title: "Succès",
         description: `L'administrateur ${adminName} a été ajouté à l'organisation ${orgName}`,
@@ -140,11 +165,11 @@ const First = () => {
 
       setAdminName('');
       setOrgName('');
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Erreur lors de l'ajout de l'administrateur:", error.response?.data || error.message);
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter l'administrateur",
+        description: "Impossible d'ajouter l'administrateur: " + (error.response?.data?.message || error.message),
         variant: "destructive",
       });
     } finally {
@@ -170,6 +195,25 @@ const First = () => {
         return;
       }
 
+      console.log("🔹 Étape 2: Ajout de l'autorité de santé dans la blockchain...");
+      
+      const invokeResponse = await axios.post(
+        `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
+        {
+          fcn: "AddHealthAuthority",
+          args: [healthAuthorityName],
+          peers: ["peer0.org1.example.com", "peer1.org1.example.com"]
+        },
+        {
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      console.log("Résultat de l'invocation :", invokeResponse.data);
+
       toast({
         title: "Succès",
         description: `L'autorité de santé ${healthAuthorityName} a été ajoutée`,
@@ -177,11 +221,11 @@ const First = () => {
       });
 
       setHealthAuthorityName('');
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Erreur lors de l'ajout de l'autorité de santé:", error.response?.data || error.message);
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter l'autorité de santé",
+        description: "Impossible d'ajouter l'autorité de santé: " + (error.response?.data?.message || error.message),
         variant: "destructive",
       });
     } finally {
