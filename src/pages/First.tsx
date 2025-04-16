@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { Building, Plus, BarChart2, Users, UserPlus, Heart, Stethoscope, Pill, Building2, Flask } from 'lucide-react';
+import { Building, Plus, BarChart2, Users, UserPlus, Heart, Stethoscope, Pill, Building2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -343,7 +343,7 @@ const First = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Laboratoires</CardTitle>
-                  <Flask className="w-4 h-4 text-muted-foreground" />
+                  <Stethoscope className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalStats.laboratories}</div>
