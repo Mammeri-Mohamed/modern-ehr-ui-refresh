@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { Building, Plus, BarChart2, Users, UserPlus, Heart, Stethoscope, Pill, Building2, Flask } from 'lucide-react';
+import { Building, Plus, BarChart2, Users, UserPlus, Heart, Stethoscope, Pill, Building2, FlaskIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import axios from 'axios';
 
-// Configuration de l'API backend
 const API_CONFIG = {
   BASE_URL: 'http://192.168.56.101:4000',
   CHANNEL: 'mychannel',
@@ -19,7 +17,6 @@ const API_CONFIG = {
   CHAINCODE_HEALTH_PATIENT: 'patient'
 };
 
-// Types pour les données
 interface PatientRequest {
   request_id: string;
   patient_id: string;
@@ -54,7 +51,6 @@ interface StatData {
   value: number;
 }
 
-// Couleurs pour les graphiques
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const First = () => {
@@ -92,7 +88,6 @@ const First = () => {
     }
   ]);
 
-  // Fonction pour obtenir le token d'authentification de l'admin
   const getAdminToken = async () => {
     try {
       console.log("🔹 Connexion de l'admin en cours...");
@@ -119,7 +114,6 @@ const First = () => {
     }
   };
 
-  // Fonction pour ajouter un administrateur à une organisation
   const handleAddAdmin = async () => {
     if (!adminName.trim() || !orgName.trim()) {
       toast({
@@ -138,16 +132,12 @@ const First = () => {
         return;
       }
 
-      // Code pour ajouter un administrateur
-      // À implémenter selon l'API blockchain
-
       toast({
         title: "Succès",
         description: `L'administrateur ${adminName} a été ajouté à l'organisation ${orgName}`,
         variant: "default",
       });
 
-      // Réinitialiser les champs
       setAdminName('');
       setOrgName('');
     } catch (error: any) {
@@ -162,7 +152,6 @@ const First = () => {
     }
   };
 
-  // Fonction pour ajouter une autorité de santé
   const handleAddHealthAuthority = async () => {
     if (!healthAuthorityName.trim()) {
       toast({
@@ -181,16 +170,12 @@ const First = () => {
         return;
       }
 
-      // Code pour ajouter une autorité de santé
-      // À implémenter selon l'API blockchain
-
       toast({
         title: "Succès",
         description: `L'autorité de santé ${healthAuthorityName} a été ajoutée`,
         variant: "default",
       });
 
-      // Réinitialiser le champ
       setHealthAuthorityName('');
     } catch (error: any) {
       console.error("❌ Erreur lors de l'ajout de l'autorité de santé:", error.response?.data || error.message);
@@ -204,18 +189,15 @@ const First = () => {
     }
   };
 
-  // Récupérer les demandes de patients et d'acteurs de santé
   const fetchRequests = async () => {
     setIsLoading(true);
     try {
-      // Récupérer les demandes de patients depuis Third.tsx
       const responsePatients = await fetch('/third');
       if (responsePatients.ok) {
         const patientData = await responsePatients.json();
         setPatientRequests(patientData);
       }
 
-      // Récupérer les demandes d'acteurs de santé depuis Second.tsx
       const responseHealthActors = await fetch('/second');
       if (responseHealthActors.ok) {
         const healthActorData = await responseHealthActors.json();
@@ -223,13 +205,11 @@ const First = () => {
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des données:", error);
-      // Nous gardons les données de démonstration en cas d'erreur
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Statistiques sur les demandes
   const getRequestStats = () => {
     const totalPatientRequests = patientRequests.length || 5;
     const pendingPatientRequests = patientRequests.filter(req => req.etat_request === 'PENDING').length || 2;
@@ -261,7 +241,6 @@ const First = () => {
     return { requestStats, patientStatusData, healthActorStatusData };
   };
 
-  // Statistiques des organisations
   const getOrganizationStats = () => {
     const orgStats = organizations.map(org => ({
       name: org.name,
@@ -291,11 +270,9 @@ const First = () => {
     return { orgStats, totalStats, entityTypeData };
   };
 
-  // Calcul des statistiques
   const { requestStats, patientStatusData, healthActorStatusData } = getRequestStats();
   const { orgStats, totalStats, entityTypeData } = getOrganizationStats();
 
-  // Effet au chargement
   useEffect(() => {
     fetchRequests();
   }, []);
@@ -322,10 +299,8 @@ const First = () => {
             <TabsTrigger value="stats">Statistiques Détaillées</TabsTrigger>
           </TabsList>
           
-          {/* Vue d'ensemble */}
           <TabsContent value="dashboard">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-              {/* Cartes statistiques */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
@@ -368,7 +343,7 @@ const First = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Laboratoires</CardTitle>
-                  <Flask className="w-4 h-4 text-muted-foreground" />
+                  <FlaskIcon className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalStats.laboratories}</div>
@@ -379,7 +354,6 @@ const First = () => {
               </Card>
             </div>
             
-            {/* Graphique des demandes */}
             <div className="grid gap-6 md:grid-cols-2 mb-8">
               <Card className="col-span-1">
                 <CardHeader>
@@ -438,7 +412,6 @@ const First = () => {
               </Card>
             </div>
             
-            {/* Liste des organisations */}
             <Card>
               <CardHeader>
                 <CardTitle>Organisations</CardTitle>
@@ -475,10 +448,8 @@ const First = () => {
             </Card>
           </TabsContent>
           
-          {/* Gestion Administrateurs */}
           <TabsContent value="admin">
             <div className="grid gap-6 md:grid-cols-2 mb-8">
-              {/* Formulaire ajout administrateur */}
               <Card>
                 <CardHeader>
                   <CardTitle>Ajouter un Administrateur</CardTitle>
@@ -526,7 +497,6 @@ const First = () => {
                 </CardContent>
               </Card>
               
-              {/* Formulaire ajout autorité de santé */}
               <Card>
                 <CardHeader>
                   <CardTitle>Ajouter une Autorité de Santé</CardTitle>
@@ -565,10 +535,8 @@ const First = () => {
             </div>
           </TabsContent>
           
-          {/* Statistiques Détaillées */}
           <TabsContent value="stats">
             <div className="grid gap-6 mb-8">
-              {/* Graphique des statuts de demandes patients */}
               <Card>
                 <CardHeader>
                   <CardTitle>Statut des Demandes de Patients</CardTitle>
@@ -601,7 +569,6 @@ const First = () => {
                 </CardContent>
               </Card>
               
-              {/* Graphique des statuts de demandes acteurs de santé */}
               <Card>
                 <CardHeader>
                   <CardTitle>Statut des Demandes d'Acteurs de Santé</CardTitle>
@@ -634,7 +601,6 @@ const First = () => {
                 </CardContent>
               </Card>
               
-              {/* Statistiques par organisation */}
               <Card>
                 <CardHeader>
                   <CardTitle>Statistiques par Organisation</CardTitle>
