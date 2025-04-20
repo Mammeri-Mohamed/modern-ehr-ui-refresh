@@ -1,20 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { User, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { getAdminToken, updateHealthActorRequestStatus } from '@/utils/blockchainApi';
 import axios from 'axios';
 
 // Type pour les demandes d'acteurs de santé
@@ -150,37 +142,7 @@ const Second = () => {
         const authToken = await getAdminToken();
         if (!authToken) return;
 
-        // Mise à jour du statut à "ACCEPTED"
-        await axios.post(
-          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
-          {
-            fcn: "UpdateRequestStatus",
-            args: [requestId, "ACCEPTED"],
-            peers: ["peer0.org1.example.com"]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${authToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-
-        // Ajout de l'acteur de santé
-        await axios.post(
-          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_ACTOR}`,
-          {
-            fcn: "AddHealthActor",
-            args: [requestId],
-            peers: ["peer0.org1.example.com"]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${authToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
+        await updateHealthActorRequestStatus(requestId, true, authToken);
 
         toast({
           title: "Demande acceptée",
@@ -188,14 +150,11 @@ const Second = () => {
           variant: "default",
         });
         
-        // Mise à jour locale pour la démonstration
         setRequests(requests.map(req => 
           req.request_id === requestId ? {...req, etat_request: 'ACCEPTED'} : req
         ));
-        
-        // getRequests(); // Décommenter pour rafraîchir depuis le serveur
       } catch (error: any) {
-        console.error("❌ Erreur lors de l'acceptation de la requête:", error.response?.data || error.message);
+        console.error("❌ Erreur lors de l'acceptation de la requête:", error);
         toast({
           title: "Erreur",
           description: `Erreur lors de l'acceptation de la demande: ${error.response?.data?.message || error.message}`,
@@ -212,21 +171,7 @@ const Second = () => {
         const authToken = await getAdminToken();
         if (!authToken) return;
 
-        // Mise à jour du statut à "REJECTED"
-        await axios.post(
-          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_ACTOR}`,
-          {
-            fcn: "UpdateRequestStatus",
-            args: [requestId, "REJECTED"],
-            peers: ["peer0.org1.example.com"]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${authToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
+        await updateHealthActorRequestStatus(requestId, false, authToken);
 
         toast({
           title: "Demande refusée",
@@ -234,14 +179,11 @@ const Second = () => {
           variant: "default",
         });
         
-        // Mise à jour locale pour la démonstration
         setRequests(requests.map(req => 
           req.request_id === requestId ? {...req, etat_request: 'REJECTED'} : req
         ));
-        
-        // getRequests(); // Décommenter pour rafraîchir depuis le serveur
       } catch (error: any) {
-        console.error("❌ Erreur lors du refus de la requête:", error.response?.data || error.message);
+        console.error("❌ Erreur lors du refus de la requête:", error);
         toast({
           title: "Erreur",
           description: `Erreur lors du refus de la demande: ${error.response?.data?.message || error.message}`,
