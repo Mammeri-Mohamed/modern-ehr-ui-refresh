@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
+import { getAdminToken, updatePatientRequestStatus } from '@/utils/blockchainApi';
 
 // Type pour les demandes de patients basé sur la structure de réponse réelle
 interface PatientRequest {
@@ -53,113 +54,159 @@ const Third = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Fonction pour obtenir le token d'authentification de l'admin
-  const getAdminToken = async () => {
-    try {
-      console.log("🔹 Connexion de l'admin en cours...");
-      const authLoginResponse = await axios.post(`${API_CONFIG.BASE_URL}/users/login`, {
-        username: "admin",
-        orgName: "Org1"
-      });
+  // const getAdminToken = async () => {
+  //   try {
+  //     console.log("🔹 Connexion de l'admin en cours...");
+  //     const authLoginResponse = await axios.post(`${API_CONFIG.BASE_URL}/users/login`, {
+  //       username: "admin",
+  //       orgName: "Org1"
+  //     });
 
-      if (!authLoginResponse.data.success || !authLoginResponse.data.message?.token) {
-        console.error("❌ Échec de la connexion:", authLoginResponse.data);
-        throw new Error("Échec de la connexion à l'admin");
-      }
+  //     if (!authLoginResponse.data.success || !authLoginResponse.data.message?.token) {
+  //       console.error("❌ Échec de la connexion:", authLoginResponse.data);
+  //       throw new Error("Échec de la connexion à l'admin");
+  //     }
 
-      console.log("✅ Connexion réussie, token JWT récupéré");
-      return authLoginResponse.data.message.token;
-    } catch (error: any) {
-      console.error("❌ Erreur lors de la connexion de l'admin:", error.response?.data || error.message);
-      setError("Erreur d'authentification: Impossible de se connecter au serveur.");
-      return null;
-    }
-  };
+  //     console.log("✅ Connexion réussie, token JWT récupéré");
+  //     return authLoginResponse.data.message.token;
+  //   } catch (error: any) {
+  //     console.error("❌ Erreur lors de la connexion de l'admin:", error.response?.data || error.message);
+  //     setError("Erreur d'authentification: Impossible de se connecter au serveur.");
+  //     return null;
+  //   }
+  // };
 
   // Fonction pour mettre à jour le statut de la requête
-  const updatePatientRequestStatus = async (requestId: string, isAccepted: boolean) => {
+  // const updatePatientRequestStatus = async (requestId: string, isAccepted: boolean) => {
+  //   try {
+  //     const authToken = await getAdminToken();
+  //     if (!authToken) return;
+
+  //     console.log(`🔹 Mise à jour du statut de la demande de patient ${requestId}...`);
+
+  //     await axios.post(
+  //       `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
+  //       {
+  //         fcn: "UpdatePatientRequestStatus",
+  //         args: ["healthAuthUser1", requestId, isAccepted.toString()],
+  //         peers: ["peer0.org1.example.com"]
+  //       },
+  //       {
+  //         headers: {
+  //           "Authorization": `Bearer ${authToken}`,
+  //           "Content-Type": "application/json"
+  //         }
+  //       }
+  //     );
+
+  //     if (isAccepted) {
+  //       await addPatientFromRequest(authToken, requestId);
+  //     }
+
+  //     toast({
+  //       title: isAccepted ? "Demande acceptée" : "Demande refusée",
+  //       description: `La demande ${requestId} a été ${isAccepted ? 'acceptée' : 'refusée'} avec succès.`,
+  //       variant: "default",
+  //     });
+
+  //     // Mise à jour locale de l'état
+  //     setRequests(requests.map(req => 
+  //       req.request_id === requestId 
+  //         ? {...req, etat_request: isAccepted ? 'ACCEPTED' : 'REJECTED'} 
+  //         : req
+  //     ));
+
+  //   } catch (error: any) {
+  //     console.error("❌ Erreur lors de la mise à jour du statut:", error.response?.data || error.message);
+  //     toast({
+  //       title: "Erreur",
+  //       description: `Erreur lors de la mise à jour du statut: ${error.response?.data?.message || error.message}`,
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
+
+  // Fonction pour ajouter le patient approuvé
+  // const addPatientFromRequest = async (authToken: string, requestId: string) => {
+  //   try {
+  //     console.log(`🔹 Ajout du patient dans la blockchain...`);
+
+  //     await axios.post(
+  //       `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
+  //       {
+  //         fcn: "AddPatientFromApprovedRequest",
+  //         args: ["healthAuthUser1", requestId],
+  //         peers: ["peer0.org1.example.com"]
+  //       },
+  //       {
+  //         headers: {
+  //           "Authorization": `Bearer ${authToken}`,
+  //           "Content-Type": "application/json"
+  //         }
+  //       }
+  //     );
+
+  //     console.log("✅ Patient ajouté avec succès");
+  //   } catch (error: any) {
+  //     console.error("❌ Erreur lors de l'ajout du patient:", error.response?.data || error.message);
+  //     throw error;  // Propager l'erreur pour la gestion globale
+  //   }
+  // };
+
+  // Fonction pour gérer l'acceptation
+  const handleAccept = async (requestId: string) => {
     try {
       const authToken = await getAdminToken();
       if (!authToken) return;
 
-      console.log(`🔹 Mise à jour du statut de la demande de patient ${requestId}...`);
-
-      await axios.post(
-        `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
-        {
-          fcn: "UpdatePatientRequestStatus",
-          args: ["healthAuthUser1", requestId, isAccepted.toString()],
-          peers: ["peer0.org1.example.com"]
-        },
-        {
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      if (isAccepted) {
-        await addPatientFromRequest(authToken, requestId);
-      }
+      await updatePatientRequestStatus(requestId, true, authToken);
 
       toast({
-        title: isAccepted ? "Demande acceptée" : "Demande refusée",
-        description: `La demande ${requestId} a été ${isAccepted ? 'acceptée' : 'refusée'} avec succès.`,
+        title: "Demande acceptée",
+        description: `La demande ${requestId} a été acceptée avec succès.`,
         variant: "default",
       });
-
-      // Mise à jour locale de l'état
+      
       setRequests(requests.map(req => 
-        req.request_id === requestId 
-          ? {...req, etat_request: isAccepted ? 'ACCEPTED' : 'REJECTED'} 
-          : req
+        req.request_id === requestId ? {...req, etat_request: 'ACCEPTED'} : req
       ));
 
     } catch (error: any) {
-      console.error("❌ Erreur lors de la mise à jour du statut:", error.response?.data || error.message);
+      console.error("❌ Erreur lors de l'acceptation de la requête:", error);
       toast({
         title: "Erreur",
-        description: `Erreur lors de la mise à jour du statut: ${error.response?.data?.message || error.message}`,
+        description: `Erreur lors de l'acceptation de la demande: ${error.message}`,
         variant: "destructive",
       });
     }
   };
 
-  // Fonction pour ajouter le patient approuvé
-  const addPatientFromRequest = async (authToken: string, requestId: string) => {
-    try {
-      console.log(`🔹 Ajout du patient dans la blockchain...`);
-
-      await axios.post(
-        `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
-        {
-          fcn: "AddPatientFromApprovedRequest",
-          args: ["healthAuthUser1", requestId],
-          peers: ["peer0.org1.example.com"]
-        },
-        {
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      console.log("✅ Patient ajouté avec succès");
-    } catch (error: any) {
-      console.error("❌ Erreur lors de l'ajout du patient:", error.response?.data || error.message);
-      throw error;  // Propager l'erreur pour la gestion globale
-    }
-  };
-
-  // Fonction pour gérer l'acceptation
-  const handleAccept = async (requestId: string) => {
-    await updatePatientRequestStatus(requestId, true);
-  };
-
   // Fonction pour gérer le refus
   const handleReject = async (requestId: string) => {
-    await updatePatientRequestStatus(requestId, false);
+    try {
+      const authToken = await getAdminToken();
+      if (!authToken) return;
+
+      await updatePatientRequestStatus(requestId, false, authToken);
+
+      toast({
+        title: "Demande refusée",
+        description: `La demande ${requestId} a été refusée.`,
+        variant: "default",
+      });
+      
+      setRequests(requests.map(req => 
+        req.request_id === requestId ? {...req, etat_request: 'REJECTED'} : req
+      ));
+
+    } catch (error: any) {
+      console.error("❌ Erreur lors du refus de la requête:", error);
+      toast({
+        title: "Erreur",
+        description: `Erreur lors du refus de la demande: ${error.message}`,
+        variant: "destructive",
+      });
+    }
   };
 
   // Fonction pour obtenir la couleur du badge selon le statut
