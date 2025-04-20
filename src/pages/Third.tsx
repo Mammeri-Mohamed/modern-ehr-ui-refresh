@@ -31,8 +31,8 @@ interface PatientRequest {
 const API_CONFIG = {
   BASE_URL: 'http://192.168.56.101:4000', // URL du serveur backend
   CHANNEL: 'mychannel',
-  CHAINCODE_HEALTH_PATIENT: 'patient',
-  CHAINCODE_HEALTH_AUTHORITY: 'healthactor'
+  CHAINCODE_HEALTH_AUTHORITY: 'healthauthority',
+  CHAINCODE_HEALTH_PATIENT: 'patient'
 };
 
 const Third = () => {
@@ -75,7 +75,119 @@ const Third = () => {
     }
   };
 
-  // Fonction pour récupérer les requêtes depuis la blockchain
+  // Fonction pour mettre à jour le statut de la requête
+  const updatePatientRequestStatus = async (requestId: string, isAccepted: boolean) => {
+    try {
+      const authToken = await getAdminToken();
+      if (!authToken) return;
+
+      console.log(`🔹 Mise à jour du statut de la demande de patient ${requestId}...`);
+
+      await axios.post(
+        `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
+        {
+          fcn: "UpdatePatientRequestStatus",
+          args: ["healthAuthUser1", requestId, isAccepted.toString()],
+          peers: ["peer0.org1.example.com"]
+        },
+        {
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      if (isAccepted) {
+        await addPatientFromRequest(authToken, requestId);
+      }
+
+      toast({
+        title: isAccepted ? "Demande acceptée" : "Demande refusée",
+        description: `La demande ${requestId} a été ${isAccepted ? 'acceptée' : 'refusée'} avec succès.`,
+        variant: "default",
+      });
+
+      // Mise à jour locale de l'état
+      setRequests(requests.map(req => 
+        req.request_id === requestId 
+          ? {...req, etat_request: isAccepted ? 'ACCEPTED' : 'REJECTED'} 
+          : req
+      ));
+
+    } catch (error: any) {
+      console.error("❌ Erreur lors de la mise à jour du statut:", error.response?.data || error.message);
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de la mise à jour du statut: ${error.response?.data?.message || error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fonction pour ajouter le patient approuvé
+  const addPatientFromRequest = async (authToken: string, requestId: string) => {
+    try {
+      console.log(`🔹 Ajout du patient dans la blockchain...`);
+
+      await axios.post(
+        `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_AUTHORITY}`,
+        {
+          fcn: "AddPatientFromApprovedRequest",
+          args: ["healthAuthUser1", requestId],
+          peers: ["peer0.org1.example.com"]
+        },
+        {
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      console.log("✅ Patient ajouté avec succès");
+    } catch (error: any) {
+      console.error("❌ Erreur lors de l'ajout du patient:", error.response?.data || error.message);
+      throw error;  // Propager l'erreur pour la gestion globale
+    }
+  };
+
+  // Fonction pour gérer l'acceptation
+  const handleAccept = async (requestId: string) => {
+    await updatePatientRequestStatus(requestId, true);
+  };
+
+  // Fonction pour gérer le refus
+  const handleReject = async (requestId: string) => {
+    await updatePatientRequestStatus(requestId, false);
+  };
+
+  // Fonction pour obtenir la couleur du badge selon le statut
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'ACCEPTED':
+        return <Badge className="bg-green-500 hover:bg-green-600"><CheckCircle className="w-3 h-3 mr-1" /> Acceptée</Badge>;
+      case 'REJECTED':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Refusée</Badge>;
+      default:
+        return <Badge variant="outline" className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300"><Clock className="w-3 h-3 mr-1" /> En attente</Badge>;
+    }
+  };
+
+  // Effet pour charger les demandes au chargement de la page
+  useEffect(() => {
+    // Activer la connexion au backend réel
+    getRequests();
+    
+    // Simulation du chargement pour la démonstration
+    // setIsLoading(true);
+    // const timer = setTimeout(() => {
+    //   setIsLoading(false);
+    // }, 1000);
+    
+    // return () => clearTimeout(timer);
+  }, []);
+
   const getRequests = async () => {
     setIsLoading(true);
     setError(null);
@@ -120,140 +232,6 @@ const Third = () => {
       setIsLoading(false);
     }
   };
-
-  // Fonction pour accepter une demande
-  const handleAccept = async (requestId: string) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir accepter la demande ${requestId} ?`)) {
-      try {
-        const authToken = await getAdminToken();
-        if (!authToken) return;
-
-        // Mise à jour du statut à "ACCEPTED"
-        await axios.post(
-          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_PATIENT}`,
-          {
-            fcn: "UpdateRequestStatus",
-            args: [requestId, "ACCEPTED"],
-            peers: ["peer0.org1.example.com"]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${authToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-
-        // Ajout du patient
-        await axios.post(
-          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_PATIENT}`,
-          {
-            fcn: "AddPatientFromRequest",
-            args: [requestId],
-            peers: ["peer0.org1.example.com"]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${authToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-
-        toast({
-          title: "Demande acceptée",
-          description: `La demande ${requestId} a été acceptée avec succès et le patient a été ajouté.`,
-          variant: "default",
-        });
-        
-        // Mise à jour locale pour la démonstration
-        setRequests(requests.map(req => 
-          req.request_id === requestId ? {...req, etat_request: 'ACCEPTED'} : req
-        ));
-        
-        // getRequests(); // Décommenter pour rafraîchir depuis le serveur
-      } catch (error: any) {
-        console.error("❌ Erreur lors de l'acceptation de la requête:", error.response?.data || error.message);
-        toast({
-          title: "Erreur",
-          description: `Erreur lors de l'acceptation de la demande: ${error.response?.data?.message || error.message}`,
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  // Fonction pour refuser une demande
-  const handleReject = async (requestId: string) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir refuser la demande ${requestId} ?`)) {
-      try {
-        const authToken = await getAdminToken();
-        if (!authToken) return;
-
-        // Mise à jour du statut à "REJECTED"
-        await axios.post(
-          `${API_CONFIG.BASE_URL}/channels/${API_CONFIG.CHANNEL}/chaincodes/${API_CONFIG.CHAINCODE_HEALTH_PATIENT}`,
-          {
-            fcn: "UpdateRequestStatus",
-            args: [requestId, "REJECTED"],
-            peers: ["peer0.org1.example.com"]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${authToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-
-        toast({
-          title: "Demande refusée",
-          description: `La demande ${requestId} a été refusée.`,
-          variant: "default",
-        });
-        
-        // Mise à jour locale pour la démonstration
-        setRequests(requests.map(req => 
-          req.request_id === requestId ? {...req, etat_request: 'REJECTED'} : req
-        ));
-        
-        // getRequests(); // Décommenter pour rafraîchir depuis le serveur
-      } catch (error: any) {
-        console.error("❌ Erreur lors du refus de la requête:", error.response?.data || error.message);
-        toast({
-          title: "Erreur",
-          description: `Erreur lors du refus de la demande: ${error.response?.data?.message || error.message}`,
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  // Fonction pour obtenir la couleur du badge selon le statut
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'ACCEPTED':
-        return <Badge className="bg-green-500 hover:bg-green-600"><CheckCircle className="w-3 h-3 mr-1" /> Acceptée</Badge>;
-      case 'REJECTED':
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Refusée</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300"><Clock className="w-3 h-3 mr-1" /> En attente</Badge>;
-    }
-  };
-
-  // Effet pour charger les demandes au chargement de la page
-  useEffect(() => {
-    // Activer la connexion au backend réel
-    getRequests();
-    
-    // Simulation du chargement pour la démonstration
-    // setIsLoading(true);
-    // const timer = setTimeout(() => {
-    //   setIsLoading(false);
-    // }, 1000);
-    
-    // return () => clearTimeout(timer);
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -317,7 +295,7 @@ const Third = () => {
                         <TableCell>{request.numero_organisation}</TableCell>
                         <TableCell>{getStatusBadge(request.etat_request)}</TableCell>
                         <TableCell>
-                          {request.etat_request === 'PENDING' && (
+                          {request.etat_request === 'PENDING' ? (
                             <div className="flex space-x-2">
                               <Button 
                                 size="sm" 
@@ -336,11 +314,9 @@ const Third = () => {
                                 Refuser
                               </Button>
                             </div>
-                          )}
-                          {request.etat_request === 'ACCEPTED' && (
+                          ) : request.etat_request === 'ACCEPTED' ? (
                             <span className="text-green-600 text-sm font-medium">Demande acceptée</span>
-                          )}
-                          {request.etat_request === 'REJECTED' && (
+                          ) : (
                             <span className="text-red-600 text-sm font-medium">Demande refusée</span>
                           )}
                         </TableCell>
